@@ -251,7 +251,7 @@ class MajiangPointRecorderUI:
         self.reset_game_button = tk.Button(self.master, text="Reset Game", command=self.reset_game)
         self.reset_game_button.pack()
 
-        self.unset_btn = tk.Button(self.master, text="Unset", command=self.unset)
+        self.unset_btn = tk.Button(self.master, text="Undo", command=self.unset)
         self.unset_btn.pack()
 
     def unset(self):
