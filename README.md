@@ -7,6 +7,18 @@ The Majiang Point Recorder is a Python application designed to assist in trackin
 - **Dynamic Score Tracking**: Keep track of each player's score throughout the game, adjusting for wins, losses, and bonuses.
 - **Game History**: Records each round's outcomes, including who won, the type of win, and any score adjustments made.
 - **Point Multipliers**: Supports different win types with specific point multipliers, including 自己起, 边赢, 窟窿, 对胡, and 杠.
+  - you can manually add the winning type by revising the attributes of ```MajiangPointRecorder```. For exmaple, 
+    ```python
+self.point_multipliers = {
+    "wins": {
+        "自己起": 0,  
+        "边赢": 1,   
+        "窟窿": 2,   
+        "对胡": 1,
+        "杠": 1      
+        "new winning type“: ? # point for this winning type
+    },
+}```
 - **Replay and Undo**: Ability to undo the last action or revert to a previous game state, ensuring flexibility in scorekeeping.
 - **Customizable Player Names**: Set up the game with custom names for each player for a personalized experience.
 
