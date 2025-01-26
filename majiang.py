@@ -1,13 +1,15 @@
 import tkinter as tk
 from tkinter import ttk
 
+BONUS_WIN_TYPES = ["暗杠", "明杠"]
+
 class MajiangPointRecorder:
     def __init__(self, player_names):
         self.players = player_names
         self.scores = {player: 0 for player in self.players}
         self.boss_index = 0
         self.point_multipliers = {
-            "wins": {"自己起":0, "边赢": 1, "窟窿": 2, "对胡": 1, "杠": 1},
+            "wins": {"自己起窟窿":4,"自己起边赢":2, "边赢": 1, "窟窿": 2, "暗杠": 2, "明杠": 1},
         }
         self.game_history = []
         self.state_history = []
@@ -47,20 +49,25 @@ class MajiangPointRecorder:
         }
         self.state_history.append(state)
         if explanation:
-            self.game_history.append(explanation + f" Scores: {self.scores}")
+            self.game_history.append(explanation + f"分数： {self.scores}")
 
     def unset(self):
         # Revert to the previous state if available
-        if len(self.game_history) > 0:  # Ensure there's a previous state to revert to
+        if len(self.state_history) > 0:  # Ensure there's a previous state to revert to
             self.state_history.pop()  # Remove the current state
             self.game_history.pop()  # Remove the current history
-            previous_state = self.state_history[-1]
-            self.scores = previous_state["scores"]
-            self.boss_index = previous_state["boss_index"]
-            # Revert other attributes as necessary
-            print("Reverted to previous state:", self.scores)
+            previous_state = self.state_history[-1] if len(self.state_history) > 0 else None
+            if previous_state:
+                self.scores = previous_state["scores"]
+                self.boss_index = previous_state["boss_index"]
+                # Revert other attributes as necessary
+                print("Reverted to previous state:", self.scores)
+
         else:
+            self.scores = {player: 0 for player in self.players}
+            self.boss_index = 0
             print("No previous state to revert to.")
+
 
     def repay_points(self, giver, points, receiver):
         """Transfers points from one player to another."""
@@ -69,7 +76,8 @@ class MajiangPointRecorder:
         self.save_state(f"{giver} gave {points} points to {receiver}.")
 
     def is_bonus(self, win_type):
-        return win_type == "杠"
+        return win_type in BONUS_WIN_TYPES
+    
     def record_round(self, winner, win_types, bonus=None):
         """Records a win, calculates, and updates scores based on the win type and if the winner is the boss, ensuring the total point sum remains 0."""
         boss = self.players[self.boss_index]
@@ -79,11 +87,6 @@ class MajiangPointRecorder:
         # Initialize win_points calculation
         win_points = 0
         for win_type in win_types.split(","):
-            # Double points for specific conditions
-            if win_type == "自己起":
-                multipliers *= 2
-                continue
-
             # Calculate base win points for each win type, adjusted by multipliers
             base_points = self.point_multipliers["wins"][win_type] * multipliers
 
@@ -108,7 +111,7 @@ class MajiangPointRecorder:
         assert sum(self.scores.values()) == 0, f"Total points do not sum to 0 after round. {self.scores}"
 
         # Update game history and potentially pass the boss position
-        self.save_state(f"{winner} (boss: {self.get_current_boss()}) won {win_points} points with {win_types}.")
+        self.save_state(f"{winner} (庄家: {self.get_current_boss()}) 赢 {win_points} 分，胡的类型 ： {win_types}.")
         if pass_boss:
             self.boss_index = (self.boss_index + 1) % len(self.players)
 
@@ -170,12 +173,12 @@ class MajiangPointRecorderUI:
         # Win Type Selection with Checkbuttons placed horizontally and spaced out
         win_type_frame = ttk.Frame(self.master)
         win_type_frame.pack(pady=(5, 10))  # Add padding above and below the frame
-        ttk.Label(win_type_frame, text="胡:").pack(side=tk.LEFT, padx=(0, 10))  # Space after label
+        ttk.Label(win_type_frame, text="胡的类型:").pack(side=tk.LEFT, padx=(0, 10))  # Space after label
         self.win_type_vars = {name : tk.BooleanVar() for name in self.recorder.point_multipliers['wins'].keys()}
         for text, var in self.win_type_vars.items():
             ttk.Checkbutton(win_type_frame, text=text, variable=var).pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(self.master, text="壮:").pack()
+        ttk.Label(self.master, text="壮家:").pack()
         self.boss_label = ttk.Label(self.master, textvariable=self.boss_var)
         self.boss_label.pack()
         
@@ -234,7 +237,7 @@ class MajiangPointRecorderUI:
         # Frame for New Scores Input for Each Player
         scores_frame = ttk.Frame(self.master)
         scores_frame.pack(pady=5, fill='x')
-        ttk.Label(scores_frame, text="New Scores:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(scores_frame, text="分数:").pack(side=tk.LEFT, padx=5)
 
         scores_entry_frame = ttk.Frame(scores_frame)
         scores_entry_frame.pack(side=tk.LEFT, fill='x', expand=True)
@@ -304,12 +307,23 @@ class MajiangPointRecorderUI:
         self.recorder.record_round(winner, win_type, bonus)
         self.update_display()
 
+    def reset_btns(self):
+        for var in self.winner_vars.values():
+            var.set(False)
+        for var in self.win_type_vars.values():
+            var.set(False)
+        for var in self.giver_vars.values():
+            var.set(False)
+        for var in self.receiver_vars.values():
+            var.set(False)
+
     def update_display(self):
+        self.reset_btns()   
         current_scores = self.recorder.get_scores()
         current_boss = self.recorder.get_current_boss()
         self.update_boss_display()
         history_text = "\n".join(self.recorder.game_history)
-        display_text = f"Current Boss: {current_boss}\nScores:\n" + "\n".join([f"{player}: {score}" for player, score in current_scores.items()]) + "\n\nHistory:\n" + history_text
+        display_text = f"当前庄家: {current_boss}\n分数:\n" + "\n".join([f"{player}: {score}" for player, score in current_scores.items()]) + "\n\nHistory:\n" + history_text
         self.display_area.delete('1.0', tk.END)
         self.display_area.insert(tk.END, display_text)
 
